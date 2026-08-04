@@ -1,0 +1,29 @@
+# Competition data and derived target artifacts stay local.
+WAYB_WAYC_*.csv
+*.parquet
+*.npy
+*.npz
+*.pt
+*.pth
+
+# Source reference documents and local analysis artifacts.
+*.pdf
+*.docx
+tmp/
+runs/
+.agents/
+GOAI_*.docx
+Predicting*.pdf
+State*.md
+WAYB_WAYC_metadata_summary.md
+analysis/
+
+# Python and editor state.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.venv/
+venv/
+.idea/
+.vscode/
