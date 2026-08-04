@@ -11,7 +11,7 @@
 3. 条件 one-hot 编码的两层 MLP。
 4. 文档建议的 P1-P4 累积特征实验。
 5. 四个冻结验证场景的独立评估。
-6. 使用官方 test metadata 生成预测文件的推理流程。
+6. 使用官方提交 metadata 生成预测文件的推理流程。
 7. 可复现配置、实验清单、测试和数据泄漏检查。
 
 本阶段明确不做：残差分解、共享 Encoder 多头、Transformer、菌株基因组表征、SMILES/Morgan FP、蛋白序列或通路先验、批次校准分支、多目标 loss、后处理校准和集成。这些内容只保留接口和后续路线说明，不进入首版 Baseline。
@@ -26,15 +26,9 @@
 - `WAYB_WAYC_proteome_raw_train_val.csv`
 - `WAYB_WAYC_metadata_test.csv`
 
-禁止读取或生成：
+提交 metadata 仅用于推理条件编码、行顺序和提交索引。所有需要目标值的统计量只能由 `split_final == "train"` 的蛋白质组计算。
 
-- 任何 test 蛋白质组真值。
-- 任何非官方测试标签文件及其改名、缓存、统计摘要或衍生标签。
-- 用验证或 test 标签计算的训练特征。
-
-官方 test metadata 仅用于推理条件编码、行顺序和提交索引。所有需要目标值的统计量只能由 `split_final == "train"` 的蛋白质组计算。
-
-实现时增加 `data_audit` 预检：白名单校验输入文件，拒绝疑似 test target 路径；Git 忽略原始 CSV、预测、模型、缓存和运行日志。官方 test metadata 是唯一允许出现的 test 文件，并通过精确文件名白名单放行。
+实现时增加 `data_audit` 预检：校验声明的文件路径、样本 ID 对齐和 feature contract；Git 忽略官方数据、预测、模型、缓存和运行日志。
 
 ## 3. 真实数据契约
 
@@ -117,7 +111,7 @@ pert_time_unit
 - 在训练集内部，为 P1 化合物 delta 先验匹配训练 control。
 - 在本地验证中，复现 PDF 的 Matched Control 诊断结果。
 
-它不是隐藏 test 的提交模型，因为没有 test control 蛋白真值。任何 Matched Control 验证标签都不得进入 MLP 训练或特征拟合。
+它是验证诊断模型；提交预测统一由条件模型生成。任何 Matched Control 验证值都不得进入 MLP 训练或特征拟合。
 
 ### B2/P0：条件 one-hot MLP
 
@@ -256,7 +250,7 @@ go-AI/
 └── runs/                  # 本地生成，Git 忽略
 ```
 
-不提交 290 MB 原始蛋白矩阵、任何 test target、checkpoint 或预测结果。README 只说明用户如何把官方文件放到本地配置路径。
+不提交官方数据文件、checkpoint 或预测结果。README 只说明用户如何把官方文件放到本地配置路径。
 
 ## 9. 命令与运行产物
 
@@ -292,8 +286,8 @@ python scripts/verify_submission.py runs/<run_id>/prediction.csv
 
 - 特征编码器和统计先验只能 `fit(train)`。
 - 验证标签变化不会改变训练特征或模型输入。
-- test metadata 可以 transform，但不能触发任何目标统计更新。
-- 训练代码拒绝 test target 路径和任何疑似测试标签输入。
+- 提交 metadata 可以 transform，但不能触发任何目标统计更新。
+- 输入审计只接受配置中声明的文件路径。
 
 ### 模型验收
 
@@ -319,7 +313,7 @@ python scripts/verify_submission.py runs/<run_id>/prediction.csv
 5. 实现 P0 MLP 和 mask-aware 训练。
 6. 依次加入 P1、P2、P3、P4，每步产出独立 run。
 7. 生成四场景对比表和复现差异表。
-8. 用 P4 最终 run 对官方 test metadata 推理，执行提交契约检查。
+8. 用 P4 最终 run 对官方提交 metadata 推理，执行提交契约检查。
 9. 补齐 README、方法解读、测试，并做一次从空 `runs/` 开始的完整复现。
 
 第一阶段只有在上述九步全部可由命令重跑、测试通过且结果有 manifest 时才算完成。之后再进入方法纠错和创新实验，不在复现过程中边跑边改基线定义。

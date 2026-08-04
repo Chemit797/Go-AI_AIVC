@@ -1,4 +1,4 @@
-"""Submission contract checks for metadata-only test predictions."""
+"""Submission contract checks for condition-model predictions."""
 
 from __future__ import annotations
 

@@ -51,7 +51,7 @@ For a treatment sample, controls are selected only when all of these fields agre
 | `pert_time` | perturbation duration |
 | `pert_time_unit` | duration unit |
 
-Water and DMSO are controls. Multiple matching controls are averaged per protein. The metric is restricted to the treatment rows with an exact matched control; it is therefore a local diagnostic comparator, not a hidden-test prediction method.
+Water and DMSO are controls. Multiple matching controls are averaged per protein. The metric is restricted to the treatment rows with an exact matched control; it is therefore a local diagnostic comparator rather than a submission model.
 
 ### Condition MLP
 
@@ -77,4 +77,4 @@ Every baseline reports log2 RMSE, Global R2, and median per-protein R2 on each f
 
 ## Test prediction
 
-Test prediction consumes only the saved model, saved training feature state, and official test metadata. It writes log2 predictions in metadata sample order. The final contract check requires the frozen protein order, finite values, unique `sample_ID`, and an exact metadata order match.
+Submission prediction consumes the saved model, saved training feature state, and official submission metadata. It writes log2 predictions in metadata sample order. The final contract check requires the frozen protein order, finite values, unique `sample_ID`, and an exact metadata order match.

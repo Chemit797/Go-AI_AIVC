@@ -18,7 +18,7 @@ flowchart LR
     D --> E["B0 / B1 诊断"]
     E --> F["P0-P4 条件特征 + MLP"]
     F --> G["四个冻结验证场景"]
-    G --> H["仅用 test metadata 推理"]
+    G --> H["提交条件推理"]
 ```
 
 | 实验 | 方法 | 它回答的问题 |
@@ -35,13 +35,13 @@ P0-P4 是**累积式**消融：P4 包含 P0、P1、P2、P3 的全部特征。首
 
 ## 2. 数据契约与预处理
 
-本项目只读取下列三个官方文件；它们默认放在仓库根目录，也可以在 `configs/baseline.yaml` 改成本地路径。
+本项目使用下列三个官方文件；它们默认放在仓库根目录，也可以在 `configs/baseline.yaml` 改成本地路径。
 
 | 文件 | 用途 | 是否包含目标值 |
 |---|---|---|
 | `WAYB_WAYC_metadata_train_val.csv` | 训练/验证条件和冻结划分 | 否 |
 | `WAYB_WAYC_proteome_raw_train_val.csv` | 训练/验证原始蛋白强度 | 是 |
-| `WAYB_WAYC_metadata_test.csv` | 推理条件、sample_ID 和提交行顺序 | 否 |
+| `WAYB_WAYC_metadata_test.csv` | 提交条件、sample_ID 和提交行顺序 | 否 |
 
 ### 预处理纪律
 
@@ -80,7 +80,7 @@ PDF 示例使用了若干占位字段名。代码使用真实发布字段：
 
 `data_source`、`instrument`、`Yeast_cell_plate`、`Strains`、`Medium`、`Temperature`、`pert_time`、`pert_time_unit`。
 
-多个可用对照时按蛋白取非缺失均值。只有处理与对应 control 都观测到的蛋白位置参与 B1 指标。B1 是本地验证的强诊断基线，以及 P1 训练 delta 的构造工具；它没有隐藏 test control 的蛋白真值，因此**不能**作为 test 提交方法。
+多个可用对照时按蛋白取非缺失均值。只有处理与对应 control 都观测到的蛋白位置参与 B1 指标。B1 是本地验证的强诊断基线，以及 P1 训练 delta 的构造工具；提交预测统一由条件模型生成。
 
 ### P0：条件编码 MLP
 
@@ -160,7 +160,7 @@ python -m goai_baseline.train --config configs/baseline.yaml --variant p4_hash
 
 每个 MLP run 写入：`checkpoint.pt`、`training_history.csv`、`metrics.csv`、`protein_r2.csv`、`feature_contract.json`、`feature_summary.json`、`manifest.json`。manifest 记录配置、输入哈希、环境版本、模型参数量与设备。
 
-### 仅用 test metadata 推理并校验提交
+### 生成并校验提交
 
 ```powershell
 python -m goai_baseline.predict --config configs/baseline.yaml --run-dir runs\p4_hash-YYYYMMDD-HHMMSS
@@ -171,9 +171,8 @@ python -m goai_baseline.submission runs\p4_hash-YYYYMMDD-HHMMSS\prediction.csv -
 
 ## 6. 公平性与可复现性
 
-- 代码只接受声明的 train/validation 蛋白矩阵和 metadata-only test 文件。
 - 所有有目标值的统计量只在训练行拟合；验证标签不参与特征拟合。
-- Git 不跟踪官方 CSV、模型权重、预测、运行日志、参考 PDF 或临时目录。
+- 运行前会校验配置的数据路径与 sample_ID 对齐；Git 不跟踪官方 CSV、模型权重、预测、运行日志、参考 PDF 或临时目录。
 - `pytest` 覆盖 sample 对齐、训练集过滤、control 键、mask loss、未知实体 fallback、control 缺失 mask，以及 P0 训练到 test 提交的完整小数据流程。
 
 ```powershell

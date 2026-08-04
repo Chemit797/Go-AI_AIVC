@@ -1,4 +1,4 @@
-"""Inference on official metadata-only test conditions."""
+"""Inference on official submission conditions."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def predict_test(config_path: str | Path, run_dir: str | Path, output_csv: str |
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate GOAI metadata-only test predictions")
+    parser = argparse.ArgumentParser(description="Generate GOAI submission predictions")
     parser.add_argument("--config", required=True)
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--output-csv", default=None)

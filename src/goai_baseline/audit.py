@@ -21,12 +21,12 @@ def sha256(path: Path) -> str:
 
 
 def assert_allowed_inputs(config: BaselineConfig) -> None:
-    """Only the declared training targets and official metadata are accepted."""
-    expected_test_name = "wayb_wayc_metadata_test.csv"
-    if config.data.metadata_test.name.casefold() != expected_test_name:
-        raise ValueError("metadata_test must point to the official metadata-only test file")
+    """Validate the declared training and submission input layout."""
+    expected_submission_metadata_name = "wayb_wayc_metadata_test.csv"
+    if config.data.metadata_test.name.casefold() != expected_submission_metadata_name:
+        raise ValueError("metadata_test must point to the official submission metadata file")
     if "test" in config.data.proteome_train_val.name.casefold():
-        raise ValueError("proteome_train_val must not point to a test protein matrix")
+        raise ValueError("proteome_train_val must point to a train/validation protein matrix")
     for path in (
         config.data.metadata_train_val,
         config.data.proteome_train_val,
