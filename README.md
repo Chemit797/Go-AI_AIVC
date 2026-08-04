@@ -1,6 +1,6 @@
 # GOAI 虚拟细胞 Baseline
 
-[English README](README_EN.md) | [方法说明](docs/baseline_method.md) | [当前问题与参赛战略](docs/current_issues_and_strategy.md) | [官方评分代理（v1）](docs/official_proxy_evaluation.md) | [v1 实验记录](docs/experiments/official_evaluation_v1.md) | [文档与真实数据勘误](docs/reproduction_errata.md)
+[English README](README_EN.md) | [方法说明](docs/baseline_method.md) | [当前问题与参赛战略](docs/current_issues_and_strategy.md) | [官方评分代理（v1）](docs/official_proxy_evaluation.md) | [v1 实验记录](docs/experiments/official_evaluation_v1.md) | [v4 实验记录](docs/experiments/oof_priors_v4.md) | [文档与真实数据勘误](docs/reproduction_errata.md)
 
 这是世界人工智能开源大赛 GOAI AI for Research 虚拟细胞方向的**可复现文档基线**。任务是在不给定处理样本 protein profile 或 control profile 的前提下，根据菌株、化合物和实验条件，直接预测酵母处理后的 `log2` 蛋白质组强度向量。
 

@@ -12,7 +12,7 @@ from .controls import exact_control_predictions
 from .schema import CHEMICAL, MEDIUM, STRAIN, TEMPERATURE, TIME, treatment_mask
 
 
-VALID_VARIANTS = ("p0_onehot", "p1_priors", "p2_crosses", "p3_time", "p4_hash")
+VALID_VARIANTS = ("p0_onehot", "p1_priors", "p2_crosses", "p3_time", "p4_hash", "p1_oof_priors")
 BASIC_CATEGORIES = (STRAIN, CHEMICAL, MEDIUM, TEMPERATURE, TIME)
 CROSS_CATEGORIES = ("strain_medium", "chemical_temperature")
 
@@ -23,7 +23,9 @@ def validate_variant(variant: str) -> None:
 
 
 def _variant_at_least(variant: str, marker: str) -> bool:
-    return VALID_VARIANTS.index(variant) >= VALID_VARIANTS.index(marker)
+    base_variant = "p1_priors" if variant == "p1_oof_priors" else variant
+    ladder = VALID_VARIANTS[:5]
+    return ladder.index(base_variant) >= ladder.index(marker)
 
 
 def _cross_values(metadata: pd.DataFrame, name: str) -> pd.Series:
@@ -148,7 +150,45 @@ class FeatureBuilder:
 
     def fit_transform(self, metadata: pd.DataFrame, y_log2: pd.DataFrame, train_ids: pd.Index) -> np.ndarray:
         self.fit(metadata, y_log2, train_ids)
+        if self.variant == "p1_oof_priors":
+            return self._transform_training_oof(metadata, y_log2, train_ids)
         return self.transform(metadata.loc[train_ids])
+
+    def _transform_training_oof(self, metadata: pd.DataFrame, y_log2: pd.DataFrame, train_ids: pd.Index) -> np.ndarray:
+        """Use leave-one-row-out target statistics only for training feature rows."""
+        train_metadata = metadata.loc[train_ids]
+        targets = y_log2.loc[train_ids]
+        observed = targets.notna().astype(np.float32)
+        global_sum = targets.sum(axis=0, skipna=True)
+        global_count = targets.count(axis=0)
+        global_fallback = pd.DataFrame(np.tile(self.global_mean, (len(train_ids), 1)), index=train_ids, columns=targets.columns)
+        global_without_self = (global_sum - targets.fillna(0.0)).div(global_count - observed).where((global_count - observed) > 0, global_fallback)
+        group_sum = targets.groupby(train_metadata[STRAIN].astype(str).to_numpy(), sort=False).transform("sum")
+        group_count = targets.notna().groupby(train_metadata[STRAIN].astype(str).to_numpy(), sort=False).transform("sum")
+        strain_oof = (group_sum - targets.fillna(0.0)).div(group_count - observed).where((group_count - observed) > 0, global_without_self)
+
+        chemical_oof = pd.DataFrame(np.tile(self.global_delta, (len(train_ids), 1)), index=train_ids, columns=targets.columns)
+        treatment_ids = train_ids[treatment_mask(train_metadata).to_numpy()]
+        matched = exact_control_predictions(metadata, y_log2, treatment_ids, train_ids)
+        valid_ids = treatment_ids[matched.has_exact_match.to_numpy()]
+        if len(valid_ids):
+            deltas = y_log2.loc[valid_ids] - matched.predictions.loc[valid_ids]
+            delta_observed = deltas.notna().astype(np.float32)
+            delta_sum = deltas.sum(axis=0, skipna=True)
+            delta_count = deltas.count(axis=0)
+            delta_fallback = pd.DataFrame(np.tile(self.global_delta, (len(valid_ids), 1)), index=valid_ids, columns=targets.columns)
+            global_delta_oof = (delta_sum - deltas.fillna(0.0)).div(delta_count - delta_observed).where((delta_count - delta_observed) > 0, delta_fallback)
+            chemical_sum = deltas.groupby(metadata.loc[valid_ids, CHEMICAL].astype(str).to_numpy(), sort=False).transform("sum")
+            chemical_count = deltas.notna().groupby(metadata.loc[valid_ids, CHEMICAL].astype(str).to_numpy(), sort=False).transform("sum")
+            chemical_oof.loc[valid_ids, :] = (
+                (chemical_sum - deltas.fillna(0.0))
+                .div(chemical_count - delta_observed)
+                .where((chemical_count - delta_observed) > 0, global_delta_oof)
+                .to_numpy(dtype=np.float32)
+            )
+        blocks = [_one_hot(train_metadata[name], self.categories[name]) for name in BASIC_CATEGORIES]
+        blocks.extend([strain_oof.to_numpy(dtype=np.float32), chemical_oof.to_numpy(dtype=np.float32)])
+        return np.concatenate(blocks, axis=1, dtype=np.float32)
 
     def state_dict(self) -> dict[str, object]:
         return {
